@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import 'bootstrap/dist/css/bootstrap.min.css'
+import 'bootstrap/dist/css/bootstrap-grid.min.css'
+import '@fontsource-variable/inter'
+import '@fontsource/jetbrains-mono/400.css'
 import './index.css'
 import App from './App.jsx'
 
