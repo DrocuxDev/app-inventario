@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useAutoDismiss } from "../ui/helpers";
+import { useState, useEffect, useCallback } from "react";
 import { Pencil, Trash2, Truck, Save, X, Mail, Phone } from "lucide-react";
 import api from "../../services/api";
-import { PageHeader, Alert, EmptyRow, useAutoDismiss } from "../ui/ui";
+import { PageHeader, Alert, EmptyRow } from "../ui/ui";
 
 const FORM_VACIO = { id: null, razon_social: "", contacto: "", telefono: "", email: "" };
 
@@ -11,18 +12,13 @@ const CrudProveedores = () => {
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const mostrarAlerta = useAutoDismiss(setMensaje);
 
+  const obtenerProveedores = useCallback(() => api.get("/api/proveedores")
+    .then((res) => { setProveedores(res.data); })
+    .catch(() => mostrarAlerta("Error al cargar proveedores", "danger")), [mostrarAlerta]);
+
   useEffect(() => {
     obtenerProveedores();
-  }, []);
-
-  const obtenerProveedores = async () => {
-    try {
-      const res = await api.get("/api/proveedores");
-      setProveedores(res.data);
-    } catch {
-      mostrarAlerta("Error al cargar proveedores", "danger");
-    }
-  };
+  }, [obtenerProveedores]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const limpiar = () => setForm(FORM_VACIO);
@@ -80,19 +76,19 @@ const CrudProveedores = () => {
               <form onSubmit={handleSubmit}>
                 <div className="field">
                   <label className="field-label">Razón social</label>
-                  <input type="text" name="razon_social" className="input-ui" placeholder="Ej. Importaciones SAC" value={form.razon_social} onChange={handleChange} required />
+                  <input type="text" name="razon_social" className="input-ui" placeholder="Ej. Importaciones SAC" value={form.razon_social} onChange={handleChange} required aria-label="Razón social" />
                 </div>
                 <div className="field">
                   <label className="field-label">Persona de contacto</label>
-                  <input type="text" name="contacto" className="input-ui" placeholder="Ej. Juan Pérez" value={form.contacto} onChange={handleChange} />
+                  <input type="text" name="contacto" className="input-ui" placeholder="Ej. Juan Pérez" value={form.contacto} onChange={handleChange} aria-label="Contacto" />
                 </div>
                 <div className="field">
                   <label className="field-label">Teléfono</label>
-                  <input type="text" name="telefono" className="input-ui tabular" placeholder="987 654 321" value={form.telefono} onChange={handleChange} />
+                  <input type="text" name="telefono" className="input-ui tabular" placeholder="987 654 321" value={form.telefono} onChange={handleChange} aria-label="Teléfono" />
                 </div>
                 <div className="field">
                   <label className="field-label">Correo electrónico</label>
-                  <input type="email" name="email" className="input-ui" placeholder="ventas@empresa.com" value={form.email} onChange={handleChange} />
+                  <input type="email" name="email" className="input-ui" placeholder="ventas@empresa.com" value={form.email} onChange={handleChange} aria-label="Correo electrónico" />
                 </div>
                 <div className="d-flex gap-2">
                   <button type="submit" className="btn-ui btn-primary-ui btn-block">

@@ -1,39 +1,31 @@
-import { useState, useEffect } from "react";
-import { Search, Pencil, Trash2, PackageOpen, Save, X } from "lucide-react";
+import { useAutoDismiss } from "../ui/helpers";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Pencil, Trash2, PackageOpen, Save, X, Plus } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import api from "../../services/api";
-import {
-  PageHeader,
-  Alert,
-  EmptyRow,
-  StockBadge,
-  CategoriaBadge,
-  useAutoDismiss,
-} from "../ui/ui";
+import { PageHeader, Alert, EmptyRow, StockBadge, CategoriaBadge } from "../ui/ui";
 
-const FORM_VACIO = { id: null, nombre: "", descripcion: "", precio: "", stock: 0, categoria_id: "" };
+const FORM_VACIO = { id: null, nombre: "", descripcion: "", precio: "", stock: 0, categoria_id: "", proveedor_id: "" };
 
 const CrudProductos = () => {
+  const dialogRef = useRef(null);
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
-  const [busqueda, setBusqueda] = useState("");
+  const [proveedores, setProveedores] = useState([]);
+  const [searchParams] = useSearchParams();
+  const busqueda = searchParams.get("q") || "";
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const [form, setForm] = useState(FORM_VACIO);
   const mostrarAlerta = useAutoDismiss(setMensaje);
 
+  const obtenerDatos = useCallback(() => Promise.all([api.get("/api/productos"), api.get("/api/categorias"), api.get("/api/proveedores")])
+    .then(([resProd, resCat, resProv]) => { setProductos(resProd.data); setCategorias(resCat.data); setProveedores(resProv.data); })
+    .catch(() => mostrarAlerta("Error al cargar productos, categorías o proveedores", "danger")), [mostrarAlerta]);
+
   useEffect(() => {
     obtenerDatos();
-  }, []);
-
-  const obtenerDatos = async () => {
-    try {
-      const [resProd, resCat] = await Promise.all([api.get("/api/productos"), api.get("/api/categorias")]);
-      setProductos(resProd.data);
-      setCategorias(resCat.data);
-    } catch {
-      mostrarAlerta("Error al cargar productos o categorías", "danger");
-    }
-  };
+  }, [obtenerDatos]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const limpiarFormulario = () => setForm(FORM_VACIO);
@@ -41,7 +33,7 @@ const CrudProductos = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = { ...form, categoria_id: form.categoria_id ? Number(form.categoria_id) : null };
+      const payload = { ...form, categoria_id: Number(form.categoria_id), proveedor_id: Number(form.proveedor_id) };
       if (form.id) {
         // El stock no se edita directamente: solo cambia vía transacciones del Kardex
         // eslint-disable-next-line no-unused-vars
@@ -53,13 +45,14 @@ const CrudProductos = () => {
         mostrarAlerta("Producto registrado exitosamente");
       }
       limpiarFormulario();
+      dialogRef.current.close();
       obtenerDatos();
     } catch (error) {
       mostrarAlerta(error.response?.data?.error || "Error al guardar el producto", "danger");
     }
   };
 
-  const handleEdit = (p) =>
+  const handleEdit = (p) => {
     setForm({
       id: p.id,
       nombre: p.nombre,
@@ -67,7 +60,10 @@ const CrudProductos = () => {
       precio: p.precio,
       stock: p.stock,
       categoria_id: p.categoria_id ?? "",
+      proveedor_id: p.proveedor_id ?? "",
     });
+    dialogRef.current.showModal();
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm("¿Seguro que deseas eliminar este producto?")) return;
@@ -90,26 +86,34 @@ const CrudProductos = () => {
 
   return (
     <div>
-      <PageHeader title="Productos" subtitle="Catálogo de productos vinculado a categorías" />
+      <PageHeader title="Productos" subtitle="Controla las existencias de tu almacén" actions={
+        <button type="button" className="btn-ui btn-primary-ui" onClick={() => { limpiarFormulario(); dialogRef.current.showModal(); }}><Plus size={17} /> Nuevo producto</button>
+      } />
       <Alert mensaje={mensaje} onClose={() => setMensaje({ texto: "", tipo: "" })} />
 
-      <div className="row g-4">
-        <div className="col-lg-4">
+      <div className="catalog-summary">
+        <div><span>Productos registrados</span><strong className="tabular">{productos.length}</strong></div>
+        <div><span>Unidades disponibles</span><strong className="tabular">{productos.reduce((sum, item) => sum + Number(item.stock), 0)}</strong></div>
+        <div><span>Con stock bajo</span><strong className="tabular">{productos.filter(item => item.stock < 10).length}</strong></div>
+      </div>
+      <dialog ref={dialogRef} className="product-dialog" aria-labelledby="product-dialog-title" onClose={limpiarFormulario}>
           <div className="ui-card">
             <div className="ui-card-header">
-              <h2 className="ui-card-title">{form.id ? "Editar producto" : "Nuevo producto"}</h2>
+              <h2 id="product-dialog-title" className="ui-card-title">{form.id ? "Editar producto" : "Nuevo producto"}</h2>
+              <button type="button" className="icon-btn" aria-label="Cerrar formulario" onClick={() => dialogRef.current.close()}><X size={18} /></button>
               {form.id && <span className="badge-ui badge-slate mono">ID {form.id}</span>}
             </div>
             <div className="ui-card-body">
-              <form onSubmit={handleSubmit}>
+              <Alert mensaje={mensaje} onClose={() => setMensaje({ texto: "", tipo: "" })} />
+              <form onSubmit={handleSubmit} className="product-form">
                 <div className="field">
                   <label className="field-label">Nombre del producto</label>
-                  <input type="text" name="nombre" className="input-ui" placeholder="Ej. Laptop Lenovo ThinkPad" value={form.nombre} onChange={handleChange} required />
+                  <input type="text" name="nombre" className="input-ui" placeholder="Ej. Laptop Lenovo ThinkPad" value={form.nombre} onChange={handleChange} required aria-label="Nombre" />
                 </div>
 
                 <div className="field">
                   <label className="field-label">Categoría</label>
-                  <select name="categoria_id" className="input-ui" value={form.categoria_id} onChange={handleChange} required>
+                  <select name="categoria_id" className="input-ui" value={form.categoria_id} onChange={handleChange} required aria-label="Categoría">
                     <option value="">Seleccione una categoría</option>
                     {categorias.map((cat) => (
                       <option key={cat.id} value={cat.id}>{cat.nombre}</option>
@@ -118,21 +122,28 @@ const CrudProductos = () => {
                 </div>
 
                 <div className="field">
+                  <label className="field-label">Proveedor</label>
+                  <select name="proveedor_id" aria-label="Proveedor" className="input-ui" value={form.proveedor_id} onChange={handleChange} required>
+                    <option value="">Seleccione un proveedor</option>
+                    {proveedores.map((proveedor) => <option key={proveedor.id} value={proveedor.id}>{proveedor.razon_social}</option>)}
+                  </select>
+                </div>
+                <div className="field">
                   <label className="field-label">Descripción</label>
-                  <textarea name="descripcion" className="input-ui" rows="2" placeholder="Características o detalles" value={form.descripcion} onChange={handleChange} />
+                  <textarea name="descripcion" className="input-ui" rows="2" placeholder="Características o detalles" value={form.descripcion} onChange={handleChange} aria-label="Descripción" />
                 </div>
 
                 <div className="row g-3">
                   <div className="col-6">
                     <div className="field">
                       <label className="field-label">Precio (S/)</label>
-                      <input type="number" step="0.01" min="0" name="precio" className="input-ui tabular" value={form.precio} onChange={handleChange} required />
+                      <input type="number" step="0.01" min="0" name="precio" className="input-ui tabular" value={form.precio} onChange={handleChange} required aria-label="Precio" />
                     </div>
                   </div>
                   <div className="col-6">
                     <div className="field">
                       <label className="field-label">{form.id ? "Stock actual" : "Stock inicial"}</label>
-                      <input type="number" min="0" name="stock" className="input-ui tabular" value={form.stock} onChange={handleChange} disabled={Boolean(form.id)} required />
+                      <input type="number" min="0" name="stock" className="input-ui tabular" value={form.stock} onChange={handleChange} disabled={Boolean(form.id)} required aria-label="Stock" />
                       {form.id && <span className="field-hint">Modificable solo vía Kardex</span>}
                     </div>
                   </div>
@@ -143,8 +154,8 @@ const CrudProductos = () => {
                     <Save size={16} strokeWidth={1.75} />
                     {form.id ? "Actualizar producto" : "Guardar producto"}
                   </button>
-                  {form.id && (
-                    <button type="button" className="btn-ui btn-secondary-ui" onClick={limpiarFormulario}>
+                  {(
+                    <button type="button" className="btn-ui btn-secondary-ui" onClick={() => dialogRef.current.close()}>
                       <X size={16} strokeWidth={1.75} />
                       Cancelar
                     </button>
@@ -153,16 +164,13 @@ const CrudProductos = () => {
               </form>
             </div>
           </div>
-        </div>
+      </dialog>
 
-        <div className="col-lg-8">
+      <div className="catalog-list">
           <div className="ui-card">
             <div className="ui-card-header">
               <div className="toolbar w-100">
-                <div className="input-icon-wrap">
-                  <Search size={16} strokeWidth={1.75} />
-                  <input type="text" className="input-ui sm" placeholder="Buscar por nombre o descripción" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-                </div>
+                <span className="catalog-results" aria-live="polite">{productosFiltrados.length} productos{busqueda ? ` para “${busqueda}”` : " en el catálogo"}</span>
                 <select className="input-ui sm" value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
                   <option value="">Todas las categorías</option>
                   {categorias.map((cat) => (
@@ -178,7 +186,7 @@ const CrudProductos = () => {
                   <tr>
                     <th>ID</th>
                     <th>Producto</th>
-                    <th>Categoría</th>
+                    <th>Categoría / proveedor</th>
                     <th className="text-end">Precio</th>
                     <th className="text-end">Stock</th>
                     <th className="text-end">Acciones</th>
@@ -190,7 +198,7 @@ const CrudProductos = () => {
                       colSpan={6}
                       icon={PackageOpen}
                       title="No se encontraron productos"
-                      subtitle={busqueda || filtroCategoria ? "Prueba ajustando la búsqueda o el filtro de categoría." : "Registra tu primer producto usando el formulario."}
+                      subtitle={busqueda || filtroCategoria ? "Prueba ajustando la búsqueda o el filtro de categoría." : "Usa Nuevo producto para agregar el primero."}
                     />
                   ) : (
                     productosFiltrados.map((prod) => (
@@ -200,7 +208,7 @@ const CrudProductos = () => {
                           <span className="cell-primary">{prod.nombre}</span>
                           {prod.descripcion && <span className="cell-secondary">{prod.descripcion}</span>}
                         </td>
-                        <td><CategoriaBadge categoria={prod.Categoria} /></td>
+                        <td><CategoriaBadge categoria={prod.Categoria} /><span className="cell-secondary">{prod.Proveedor?.razon_social}</span></td>
                         <td className="text-end tabular">S/ {Number(prod.precio).toFixed(2)}</td>
                         <td className="text-end"><StockBadge stock={prod.stock} /></td>
                         <td className="text-end" style={{ whiteSpace: "nowrap" }}>
@@ -218,7 +226,6 @@ const CrudProductos = () => {
               </table>
             </div>
           </div>
-        </div>
       </div>
     </div>
   );

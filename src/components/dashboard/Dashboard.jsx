@@ -1,3 +1,4 @@
+import { formatFecha } from "../ui/helpers";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -11,14 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import api from "../../services/api";
-import {
-  PageHeader,
-  EmptyRow,
-  StockBadge,
-  CategoriaBadge,
-  TipoMovimientoBadge,
-  formatFecha,
-} from "../ui/ui";
+import { Alert, PageHeader, EmptyRow, StockBadge, CategoriaBadge, TipoMovimientoBadge } from "../ui/ui";
 
 const KpiCard = ({ label, value, hint, icon: Icon, tone, loading }) => (
   <div className="ui-card kpi-card h-100">
@@ -42,20 +36,20 @@ const Dashboard = () => {
     alertasBajoStock: 0,
     productosBajoStock: [],
     ultimosMovimientos: [],
+    stockPorCategoria: [],
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const cargarKpis = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get("/api/dashboard/kpis");
+  const cargarKpis = () => api.get("/api/dashboard/kpis")
+    .then((res) => {
       setKpis(res.data);
-    } catch (error) {
-      console.error("Error al cargar KPIs:", error);
-    } finally {
+      setError("");
+    }).catch(() => {
+      setError("No se pudo conectar con la API. Comprueba que el servidor y MySQL estén activos.");
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
 
   useEffect(() => {
     cargarKpis();
@@ -64,17 +58,19 @@ const Dashboard = () => {
   return (
     <div>
       <PageHeader
-        title="Dashboard general"
-        subtitle="Resumen ejecutivo del estado actual del inventario y Kardex"
+        title="Tu inventario, bajo control"
+        subtitle="Disponibilidad, movimientos y alertas en un solo lugar."
         actions={
-          <button className="btn-ui btn-secondary-ui" onClick={cargarKpis}>
+          <button className="btn-ui btn-secondary-ui" onClick={() => { setLoading(true); cargarKpis(); }}>
             <RefreshCw size={16} strokeWidth={1.75} />
             Actualizar
           </button>
         }
       />
 
-      <div className="row g-3 mb-4">
+      <Alert mensaje={{ texto: error, tipo: "danger" }} onClose={() => setError("")} />
+      {!error && <>
+      <div className="row g-3 mb-4 dashboard-kpis">
         <div className="col-sm-6 col-xl-3">
           <KpiCard label="Total productos" value={kpis.totalProductos} hint="Registrados en catálogo" icon={Package} tone="indigo" loading={loading} />
         </div>
@@ -89,6 +85,29 @@ const Dashboard = () => {
         </div>
       </div>
 
+      <div className="row g-4 mb-4 dashboard-overview">
+        <div className="col-lg-7">
+          <section className="ui-card h-100" aria-labelledby="stock-chart-title">
+            <div className="ui-card-header"><h2 id="stock-chart-title" className="ui-card-title">Stock por categoría</h2><span className="cell-muted">Unidades disponibles</span></div>
+            <div className="ui-card-body stock-chart">
+              {kpis.stockPorCategoria.length === 0 ? <p>Registra categorías para ver la distribución.</p> : kpis.stockPorCategoria.map((category) => (
+                <div className="stock-chart-row" key={category.nombre}>
+                  <div className="stock-chart-label"><span>{category.nombre}</span><strong className="tabular">{category.unidades}</strong></div>
+                  <div className="stock-chart-track" aria-hidden="true"><div style={{ width: `${category.unidades / Math.max(1, ...kpis.stockPorCategoria.map(c => c.unidades)) * 100}%` }} /></div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+        <div className="col-lg-5">
+          <section className="ui-card quick-actions h-100">
+            <span className="eyebrow">OPERACIÓN DIARIA</span>
+            <h2>Un movimiento.<br />Todo actualizado.</h2>
+            <p>Registra entradas, salidas y ajustes con un historial de cada operación.</p>
+            <Link to="/kardex" className="btn-ui btn-primary-ui">Registrar movimiento <ArrowRight size={16} /></Link>
+          </section>
+        </div>
+      </div>
       <div className="row g-4">
         <div className="col-lg-7">
           <div className="ui-card h-100">
@@ -184,6 +203,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+      </>}
     </div>
   );
 };

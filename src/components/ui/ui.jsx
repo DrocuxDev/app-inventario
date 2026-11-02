@@ -74,16 +74,3 @@ export const TipoMovimientoBadge = ({ tipo }) => {
   return <span className={`badge-ui ${cls}`}>{tipo}</span>;
 };
 
-export const formatFecha = (valor) =>
-  new Date(valor).toLocaleString("es-PE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-export const useAutoDismiss = (setMensaje, ms = 4000) => (texto, tipo = "success") => {
-  setMensaje({ texto, tipo });
-  setTimeout(() => setMensaje({ texto: "", tipo: "" }), ms);
-};

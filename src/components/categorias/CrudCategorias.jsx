@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useAutoDismiss } from "../ui/helpers";
+import { useState, useEffect, useCallback } from "react";
 import { Pencil, Trash2, FolderOpen, Save, X } from "lucide-react";
 import api from "../../services/api";
-import { PageHeader, Alert, EmptyRow, useAutoDismiss } from "../ui/ui";
+import { PageHeader, Alert, EmptyRow } from "../ui/ui";
 
 const FORM_VACIO = { id: null, nombre: "", descripcion: "" };
 
@@ -11,18 +12,13 @@ const CrudCategorias = () => {
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const mostrarAlerta = useAutoDismiss(setMensaje);
 
+  const obtenerCategorias = useCallback(() => api.get("/api/categorias")
+    .then((res) => { setCategorias(res.data); })
+    .catch(() => mostrarAlerta("Error al cargar categorías", "danger")), [mostrarAlerta]);
+
   useEffect(() => {
     obtenerCategorias();
-  }, []);
-
-  const obtenerCategorias = async () => {
-    try {
-      const res = await api.get("/api/categorias");
-      setCategorias(res.data);
-    } catch {
-      mostrarAlerta("Error al cargar categorías", "danger");
-    }
-  };
+  }, [obtenerCategorias]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -72,11 +68,11 @@ const CrudCategorias = () => {
               <form onSubmit={handleSubmit}>
                 <div className="field">
                   <label className="field-label">Nombre</label>
-                  <input type="text" name="nombre" className="input-ui" placeholder="Ej. Electrónica" value={form.nombre} onChange={handleChange} required />
+                  <input type="text" name="nombre" className="input-ui" placeholder="Ej. Electrónica" value={form.nombre} onChange={handleChange} required aria-label="Nombre" />
                 </div>
                 <div className="field">
                   <label className="field-label">Descripción</label>
-                  <textarea name="descripcion" className="input-ui" rows="3" placeholder="Descripción de la categoría" value={form.descripcion} onChange={handleChange} />
+                  <textarea name="descripcion" className="input-ui" rows="3" placeholder="Descripción de la categoría" value={form.descripcion} onChange={handleChange} aria-label="Descripción" />
                 </div>
                 <div className="d-flex gap-2">
                   <button type="submit" className="btn-ui btn-primary-ui btn-block">

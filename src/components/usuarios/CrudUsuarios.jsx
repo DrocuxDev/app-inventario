@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useAutoDismiss } from "../ui/helpers";
+import { useState, useEffect, useCallback } from "react";
 import { Pencil, Trash2, Users, Save, X } from "lucide-react";
 import api from "../../services/api";
-import { PageHeader, Alert, EmptyRow, useAutoDismiss } from "../ui/ui";
+import { PageHeader, Alert, EmptyRow } from "../ui/ui";
 
 const FORM_VACIO = { id: null, nombre: "", email: "", password: "", rol: "Almacenero", estado: true };
 
@@ -19,18 +20,13 @@ const CrudUsuarios = () => {
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const mostrarAlerta = useAutoDismiss(setMensaje);
 
+  const obtenerUsuarios = useCallback(() => api.get("/api/usuarios")
+    .then((res) => { setUsuarios(res.data); })
+    .catch(() => mostrarAlerta("Error al cargar usuarios", "danger")), [mostrarAlerta]);
+
   useEffect(() => {
     obtenerUsuarios();
-  }, []);
-
-  const obtenerUsuarios = async () => {
-    try {
-      const res = await api.get("/api/usuarios");
-      setUsuarios(res.data);
-    } catch {
-      mostrarAlerta("Error al cargar usuarios", "danger");
-    }
-  };
+  }, [obtenerUsuarios]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -88,20 +84,20 @@ const CrudUsuarios = () => {
               <form onSubmit={handleSubmit}>
                 <div className="field">
                   <label className="field-label">Nombre completo</label>
-                  <input type="text" name="nombre" className="input-ui" placeholder="Ej. Ana Torres" value={form.nombre} onChange={handleChange} required />
+                  <input type="text" name="nombre" className="input-ui" placeholder="Ej. Ana Torres" value={form.nombre} onChange={handleChange} required aria-label="Nombre" />
                 </div>
                 <div className="field">
                   <label className="field-label">Correo electrónico</label>
-                  <input type="email" name="email" className="input-ui" placeholder="usuario@inventario.com" value={form.email} onChange={handleChange} required />
+                  <input type="email" name="email" className="input-ui" placeholder="usuario@inventario.com" value={form.email} onChange={handleChange} required aria-label="Correo electrónico" />
                 </div>
                 <div className="field">
                   <label className="field-label">Contraseña</label>
-                  <input type="password" name="password" className="input-ui" placeholder="••••••••" value={form.password} onChange={handleChange} required={!form.id} />
+                  <input type="password" name="password" className="input-ui" placeholder="••••••••" value={form.password} onChange={handleChange} required={!form.id} aria-label="Contraseña" />
                   {form.id && <span className="field-hint">Déjala en blanco para mantener la actual</span>}
                 </div>
                 <div className="field">
                   <label className="field-label">Rol</label>
-                  <select name="rol" className="input-ui" value={form.rol} onChange={handleChange}>
+                  <select name="rol" className="input-ui" value={form.rol} onChange={handleChange} aria-label="Rol">
                     <option value="Administrador">Administrador</option>
                     <option value="Almacenero">Almacenero</option>
                     <option value="Supervisor">Supervisor</option>
@@ -109,7 +105,7 @@ const CrudUsuarios = () => {
                 </div>
                 <div className="field">
                   <label className="switch-row">
-                    <input type="checkbox" name="estado" checked={form.estado} onChange={handleChange} />
+                    <input type="checkbox" name="estado" checked={form.estado} onChange={handleChange} aria-label="Activo" />
                     Usuario activo
                   </label>
                 </div>
