@@ -1,16 +1,41 @@
-# React + Vite
+# SENATI - Panel de Inventario
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite + React Router. Tema personalizado Senati Sobrio.
+Backend: [api-db](https://github.com/DrocuxDev/api-db).
 
-Currently, two official plugins are available:
+## Desarrollo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Requiere Node.js 22.12 o superior. Inicia primero la API en el puerto 3006.
+Ejecuta `npm ci` y `npm run dev`. Abre la URL que indique Vite (habitualmente
+http://localhost:5173). El proxy envía `/api` al backend; no necesitas `.env` local.
 
-## React Compiler
+## Compilación y revisión
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+`npm run lint` comprueba el código. `npm run build` genera `dist/`.
+Se verificaron ambos comandos sin errores ni advertencias de ESLint.
 
-## Expanding the ESLint configuration
+Para un backend en otro dominio, establece `VITE_API_URL=https://tu-api.example.com`
+antes de compilar. Usa solo el origen, sin añadir `/api`. Si sirves ambos desde
+el mismo dominio, configura tu servidor web para redirigir `/api` al backend y
+para resolver las rutas React a `index.html`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Funcionalidad
+
+Seis vistas: Dashboard, Productos, Categorías, Proveedores, Usuarios y Kardex.
+Categoría/proveedor dinámicos; stock editable solamente con movimientos;
+dashboard con KPIs, distribución por categoría, alertas y actividad reciente.
+Los fallos de conexión se muestran como error, sin presentar ceros como datos.
+
+## Diseño
+
+Consulta `DESIGN.md` y `docs/design-system.md`. Se aplicaron versiones públicas de
+design-system-builder, theme-factory, data-viz-renderer y chart-image. El tema
+Senati Sobrio fue solicitado por el usuario; no es un manual oficial de marca.
+Las dos últimas skills generan los anexos HTML y PNG del informe; el gráfico
+del panel usa directamente los datos de la API para actualizarse al recargar.
+
+## GitHub
+
+Sustituye los archivos de tu checkout con esta versión, ejecuta lint/build,
+revisa `git diff`, crea un commit y súbelo. Este paquete no incluye `.git`,
+credenciales ni `node_modules`.
