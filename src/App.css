@@ -20,22 +20,10 @@
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   padding: 20px;
   border-bottom: 1px solid #1E293B;
 }
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: #4F46E5;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.brand-name { color: #F8FAFC; font-weight: 700; font-size: 0.9375rem; letter-spacing: -0.01em; line-height: 1.2; }
-.brand-sub { color: #64748B; font-size: 0.75rem; }
 
 .sidebar-section {
   padding: 18px 20px 6px;
@@ -127,11 +115,3 @@
 }
 .page-body { padding: 28px 32px 40px; flex: 1; }
 
-@media (max-width: 900px) {
-  .admin-layout { flex-direction: column; }
-  .sidebar { width: 100%; min-width: 0; height: auto; position: relative; }
-  .sidebar-nav { flex-direction: row; flex-wrap: wrap; padding-bottom: 10px; }
-  .nav-item.active::before { display: none; }
-  .sidebar-section, .sidebar-footer { display: none; }
-  .topbar, .page-body { padding-left: 16px; padding-right: 16px; }
-}

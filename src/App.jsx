@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import {
   LayoutDashboard,
   Package,
@@ -6,15 +6,18 @@ import {
   Truck,
   ArrowLeftRight,
   Users,
-  Boxes,
-  ChevronRight,
+  Search,
+  Menu,
+  X,
 } from "lucide-react";
+import { useState } from "react";
 import Dashboard from "./components/dashboard/Dashboard";
 import CrudProductos from "./components/productos/crudProductos";
 import CrudCategorias from "./components/categorias/CrudCategorias";
 import CrudProveedores from "./components/proveedores/CrudProveedores";
 import KardexMovimientos from "./components/kardex/KardexMovimientos";
 import CrudUsuarios from "./components/usuarios/CrudUsuarios";
+import senatiLogo from "./assets/senati-logo.png";
 import "./App.css";
 
 const NAV_GENERAL = [
@@ -27,123 +30,72 @@ const NAV_INVENTARIO = [
   { to: "/kardex", label: "Kardex / Movimientos", icon: ArrowLeftRight },
 ];
 const NAV_ADMIN = [{ to: "/usuarios", label: "Usuarios", icon: Users }];
-const ALL_NAV = [...NAV_GENERAL, ...NAV_INVENTARIO, ...NAV_ADMIN];
 
-const NavGroup = ({ items }) =>
+const NavGroup = ({ items, onNavigate }) =>
   items.map(({ to, label, icon: Icon }) => (
-    <NavLink key={to} to={to} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
+    <NavLink key={to} to={to} title={label} aria-label={label} onClick={onNavigate} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
       <Icon size={18} strokeWidth={1.75} />
-      {label}
+      <span className="nav-label">{label}</span>
     </NavLink>
   ));
 
-const Topbar = () => {
-  const { pathname } = useLocation();
-  const actual = ALL_NAV.find((n) => pathname.startsWith(n.to));
+const Topbar = ({ menuOpen, onToggleMenu }) => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get("q") || "";
+  const searchProducts = (event) => {
+    event.preventDefault();
+    navigate({ pathname: "/productos", search: query ? `?${new URLSearchParams({ q: query })}` : "" });
+  };
   return (
     <header className="topbar">
-      <div className="breadcrumb-ui">
-        <span>Panel de Control de Almacén e Inventario</span>
-        <ChevronRight size={14} strokeWidth={1.75} />
-        <strong>{actual ? actual.label : "Inicio"}</strong>
-      </div>
-      <div className="d-flex align-items-center gap-3">
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="btn-ui btn-secondary-ui"
-          style={{ height: "32px", fontSize: "0.75rem", padding: "0 10px" }}
-        >
-          Actualizar datos
-        </button>
-        <div style={{ width: "1px", height: "20px", background: "var(--border)" }}></div>
-        <div
-          className="d-flex align-items-center gap-2"
-          style={{
-            padding: "4px 10px 4px 5px",
-            borderRadius: "999px",
-            background: "#F8FAFC",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <div
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "999px",
-              background: "#4F46E5",
-              color: "#FFFFFF",
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            DD
-          </div>
-          <div style={{ lineHeight: 1.1 }}>
-            <div style={{ fontWeight: 600, fontSize: "0.75rem", color: "var(--text-900)" }}>
-              DrocuxDev
-            </div>
-            <div
-              style={{
-                fontSize: "0.6875rem",
-                color: "var(--text-500)",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <span className="dot dot-green" style={{ width: "5px", height: "5px" }}></span>
-              Admin
-            </div>
-          </div>
-        </div>
-      </div>
+      <button type="button" className="mobile-menu-toggle icon-btn" onClick={onToggleMenu} aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"} aria-expanded={menuOpen} aria-controls="main-sidebar">
+        {menuOpen ? <X size={21} /> : <Menu size={21} />}
+      </button>
+      <form className="topbar-search" role="search" onSubmit={searchProducts}>
+        <Search size={18} aria-hidden="true" />
+        <input type="search" aria-label="Buscar productos" placeholder="Buscar productos por nombre o descripción…" value={query} onChange={(event) => setSearchParams(previous => { const next = new URLSearchParams(previous); if (event.target.value) next.set("q", event.target.value); else next.delete("q"); return next; }, { replace: true })} />
+        <button type="submit" aria-label="Buscar en productos">Buscar</button>
+      </form>
+      <div className="workspace-label"><span className="workspace-dot" /> Almacén principal</div>
     </header>
   );
 };
 
 function App() {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <BrowserRouter>
-      <div className="admin-layout">
-        <aside className="sidebar">
+      <div className={`admin-layout${menuOpen ? " menu-open" : ""}`}>
+        {menuOpen && <button className="sidebar-backdrop" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)} />}
+        <aside className="sidebar" id="main-sidebar" onKeyDown={(event) => { if (event.key === "Escape") setMenuOpen(false); }}>
           <div className="sidebar-brand">
-            <div className="brand-mark">
-              <Boxes size={18} strokeWidth={1.75} />
+            <div className="sidebar-logo-frame">
+              <img src={senatiLogo} alt="SENATI" className="sidebar-logo" />
             </div>
-            <div>
-              <div className="brand-name">Stockflow</div>
-              <div className="brand-sub">Panel de Inventario</div>
-            </div>
+            <span className="sidebar-brand-caption">PANEL DE INVENTARIO</span>
           </div>
 
-          <div className="sidebar-section">General</div>
-          <nav className="sidebar-nav" style={{ flex: "none" }}>
-            <NavGroup items={NAV_GENERAL} />
-          </nav>
-          <div className="sidebar-section">Inventario</div>
-          <nav className="sidebar-nav" style={{ flex: "none" }}>
-            <NavGroup items={NAV_INVENTARIO} />
-          </nav>
-          <div className="sidebar-section">Administración</div>
-          <nav className="sidebar-nav">
-            <NavGroup items={NAV_ADMIN} />
+          <nav className="sidebar-nav" aria-label="Navegación principal">
+            <span className="sidebar-section">Vista general</span>
+            <NavGroup items={NAV_GENERAL} onNavigate={() => setMenuOpen(false)} />
+            <span className="sidebar-section">Inventario</span>
+            <NavGroup items={NAV_INVENTARIO} onNavigate={() => setMenuOpen(false)} />
+            <span className="sidebar-section">Administración</span>
+            <NavGroup items={NAV_ADMIN} onNavigate={() => setMenuOpen(false)} />
           </nav>
 
           <div className="sidebar-footer">
-            <div className="avatar">DX</div>
+            <div className="avatar">L9</div>
             <div>
-              <div className="footer-name">DrocuxDev</div>
-              <div className="footer-role">Administrador</div>
+              <div className="footer-name">Laboratorio 9</div>
+              <div className="footer-role">Seminario IA 502</div>
             </div>
           </div>
         </aside>
 
         <div className="main-content">
-          <Topbar />
+          <Topbar menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(!menuOpen)} />
           <main className="page-body">
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
