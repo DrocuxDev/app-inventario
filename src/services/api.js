@@ -4,4 +4,25 @@ const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || ''
 });
 
+// Adjunta el token JWT a todas las peticiones (si existe)
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+});
+
+// Si el token es inválido o expiró, se limpia la sesión y se vuelve al login
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const esLogin = error.config?.url?.includes('/auth/login');
+        if (error.response?.status === 401 && !esLogin) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuario');
+            if (window.location.pathname !== '/login') window.location.assign('/login');
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;
