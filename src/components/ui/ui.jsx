@@ -74,3 +74,5 @@ export const TipoMovimientoBadge = ({ tipo }) => {
   return <span className={`badge-ui ${cls}`}>{tipo}</span>;
 };
 
+export { DataTable } from "./DataTable";
+export { Modal, ConfirmDialog } from "./Modal";
