@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import api from "../../services/api";
+import { usePermisos } from "../../auth/permisosContext";
 import { Alert, PageHeader, DataTable, StockBadge, CategoriaBadge, TipoMovimientoBadge } from "../ui/ui";
 
 const KpiCard = ({ label, value, hint, icon: Icon, tone, loading }) => (
@@ -40,6 +41,8 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Los accesos directos solo aparecen si el rol tiene habilitado ese módulo
+  const { puede } = usePermisos();
 
   const cargarKpis = () => api.get("/api/dashboard/kpis")
     .then((res) => {
@@ -152,7 +155,7 @@ const Dashboard = () => {
           </div>
 
           <div className="row g-4 mb-4 dashboard-overview">
-            <div className="col-lg-7">
+            <div className={puede("kardex") ? "col-lg-7" : "col-12"}>
               <section className="ui-card h-100" aria-labelledby="stock-chart-title">
                 <div className="ui-card-header">
                   <h2 id="stock-chart-title" className="ui-card-title">Stock por categoría</h2>
@@ -181,6 +184,7 @@ const Dashboard = () => {
                 </div>
               </section>
             </div>
+            {puede("kardex") && (
             <div className="col-lg-5">
               <section className="ui-card quick-actions h-100">
                 <span className="eyebrow">OPERACIÓN DIARIA</span>
@@ -191,6 +195,7 @@ const Dashboard = () => {
                 </Link>
               </section>
             </div>
+            )}
           </div>
 
           <div className="row g-4">
@@ -205,10 +210,12 @@ const Dashboard = () => {
                 data={kpis.ultimosMovimientos}
                 loading={loading}
                 headerActions={
-                  <Link to="/kardex" className="btn-ui btn-secondary-ui btn-sm-ui">
-                    Ver Kardex
-                    <ArrowRight size={15} strokeWidth={1.75} />
-                  </Link>
+                  puede("kardex") && (
+                    <Link to="/kardex" className="btn-ui btn-secondary-ui btn-sm-ui">
+                      Ver Kardex
+                      <ArrowRight size={15} strokeWidth={1.75} />
+                    </Link>
+                  )
                 }
                 emptyState={{
                   icon: History,
@@ -229,10 +236,12 @@ const Dashboard = () => {
                 data={kpis.productosBajoStock}
                 loading={loading}
                 headerActions={
-                  <Link to="/productos" className="btn-ui btn-secondary-ui btn-sm-ui">
-                    Productos
-                    <ArrowRight size={15} strokeWidth={1.75} />
-                  </Link>
+                  puede("productos") && (
+                    <Link to="/productos" className="btn-ui btn-secondary-ui btn-sm-ui">
+                      Productos
+                      <ArrowRight size={15} strokeWidth={1.75} />
+                    </Link>
+                  )
                 }
                 emptyState={{
                   icon: ShieldCheck,

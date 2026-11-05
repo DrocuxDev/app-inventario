@@ -4,6 +4,7 @@ import { LogIn, Mail, Lock } from 'lucide-react';
 import api from '../../services/api';
 import { Alert } from '../ui/ui';
 import senatiLogo from '../../assets/senati-logo.png';
+import { guardarSesion } from '../../auth/modulos';
 
 const Login = () => {
   const [credenciales, setCredenciales] = useState({ email: '', password: '' });
@@ -24,20 +25,20 @@ const Login = () => {
       // 1. Guardar el token en localStorage
       localStorage.setItem('token', response.data.token);
 
-      // Guardar también datos del usuario si vienen en la respuesta
+      // Guardar también datos del usuario y sus módulos habilitados
       if (response.data.usuario) {
-        localStorage.setItem('usuario', JSON.stringify(response.data.usuario));
+        guardarSesion(response.data);
       }
 
-      // 2. Redirigir al Dashboard (o a la ruta protegida que se intentó abrir)
-      navigate(location.state?.from?.pathname || '/dashboard', { replace: true });
+      // 2. Redirigir a la ruta protegida que se intentó abrir (o a la primera pantalla habilitada)
+      navigate(location.state?.from?.pathname || '/', { replace: true });
     } catch (error) {
       setError(error.response?.data?.error || 'Credenciales inválidas. Intente nuevamente.');
     }
   };
 
   // Si ya hay una sesión activa, no se muestra el login
-  if (localStorage.getItem('token')) return <Navigate to="/dashboard" replace />;
+  if (localStorage.getItem('token')) return <Navigate to="/" replace />;
 
   return (
     <div

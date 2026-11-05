@@ -3,6 +3,17 @@ import { useState, useEffect, useCallback } from "react";
 import { Pencil, Trash2, Users, Save, Plus } from "lucide-react";
 import api from "../../services/api";
 import { PageHeader, Alert, DataTable, Modal, ConfirmDialog } from "../ui/ui";
+import { MODULOS, MODULOS_POR_DEFECTO } from "../../auth/modulos";
+import { usePermisos } from "../../auth/permisosContext";
+import RolesModulos from "./RolesModulos";
+
+const ROLES_RESPALDO = ["Administrador", "Almacenero", "Supervisor"];
+const ROLES_INICIALES = ROLES_RESPALDO.map((nombre, i) => ({
+  id: i + 1,
+  nombre,
+  modulos: MODULOS_POR_DEFECTO[nombre] || ["dashboard"],
+  protegido: nombre === "Administrador",
+}));
 
 const FORM_VACIO = { id: null, nombre: "", email: "", password: "", rol: "Almacenero", estado: true };
 
@@ -22,15 +33,32 @@ const CrudUsuarios = () => {
   const [usuarioAEliminar, setUsuarioAEliminar] = useState(null);
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const mostrarAlerta = useAutoDismiss(setMensaje);
+  const { usuario: sesion, refrescar } = usePermisos();
+  const esAdmin = sesion?.rol === "Administrador";
+  const [roles, setRoles] = useState(ROLES_INICIALES);
+  const [loadingRoles, setLoadingRoles] = useState(false);
 
   const obtenerUsuarios = useCallback(() => api.get("/api/usuarios")
     .then((res) => { setUsuarios(res.data); })
     .catch(() => mostrarAlerta("Error al cargar usuarios", "danger"))
     .finally(() => setLoading(false)), [mostrarAlerta]);
 
+  const obtenerRoles = useCallback(() => api.get("/api/roles")
+    .then((res) => { if (Array.isArray(res.data) && res.data.length) setRoles(res.data); })
+    .catch(() => {})
+    .finally(() => setLoadingRoles(false)), []);
+
   useEffect(() => {
     obtenerUsuarios();
-  }, [obtenerUsuarios]);
+    obtenerRoles();
+  }, [obtenerUsuarios, obtenerRoles]);
+
+  // Roles disponibles en el formulario (solo un Administrador puede asignar "Administrador")
+  const nombresRoles = roles.length ? roles.map((r) => r.nombre) : ROLES_RESPALDO;
+  const opcionesRol = [...new Set([...nombresRoles, form.rol].filter(Boolean))].filter(
+    (nombre) => esAdmin || nombre !== "Administrador" || form.rol === "Administrador"
+  );
+  const modulosRolSel = roles.find((r) => r.nombre === form.rol)?.modulos;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -63,6 +91,7 @@ const CrudUsuarios = () => {
       }
       cerrarModal();
       obtenerUsuarios();
+      refrescar(); // por si se modificó el propio usuario
     } catch (error) {
       mostrarAlerta(error.response?.data?.error || "Error al guardar usuario", "danger");
     }
@@ -197,6 +226,21 @@ const CrudUsuarios = () => {
         }}
       />
 
+      {/* Configuración de módulos por tipo de usuario: solo Administrador */}
+      {esAdmin && (
+        <div className="mt-4">
+          <RolesModulos
+            roles={roles}
+            loading={loadingRoles}
+            mostrarAlerta={mostrarAlerta}
+            onCambio={async () => {
+              await obtenerRoles();
+              refrescar();
+            }}
+          />
+        </div>
+      )}
+
       <Modal
         open={modalAbierto}
         onClose={cerrarModal}
@@ -286,10 +330,19 @@ const CrudUsuarios = () => {
                   onChange={handleChange}
                   aria-label="Rol"
                 >
-                  <option value="Administrador">Administrador</option>
-                  <option value="Almacenero">Almacenero</option>
-                  <option value="Supervisor">Supervisor</option>
+                  {opcionesRol.map((nombre) => (
+                    <option key={nombre} value={nombre}>
+                      {nombre}
+                    </option>
+                  ))}
                 </select>
+                {modulosRolSel && (
+                  <span className="field-hint">
+                    {modulosRolSel.length
+                      ? `Acceso a: ${MODULOS.filter((m) => modulosRolSel.includes(m.key)).map((m) => m.label).join(", ")}`
+                      : "Este rol no tiene módulos habilitados"}
+                  </span>
+                )}
               </div>
             </div>
           </div>

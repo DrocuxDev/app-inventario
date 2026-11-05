@@ -89,10 +89,14 @@ const CrudProductos = () => {
     e.preventDefault();
     try {
       const payload = {
-        ...form,
+        nombre: form.nombre,
+        descripcion: form.descripcion,
+        precio: form.precio,
         categoria_id: Number(form.categoria_id || categorias[0]?.id || 1),
         proveedor_id: Number(form.proveedor_id || proveedores[0]?.id || 1),
       };
+      // El stock solo se envía al crear (entrada inicial); luego se modifica desde el Kardex
+      if (!form.id) payload.stock = Number(form.stock || 0);
       if (form.id) {
         await api.put(`/api/productos/${form.id}`, payload, getHeaders());
         mostrarAlerta("Producto actualizado correctamente");
@@ -470,9 +474,11 @@ const CrudProductos = () => {
                   placeholder="0"
                   value={form.stock}
                   onChange={handleChange}
-                  required
+                  required={!form.id}
+                  disabled={Boolean(form.id)}
                   aria-label="Stock"
                 />
+                {form.id && <span className="field-hint">El stock se modifica desde el Kardex</span>}
               </div>
             </div>
           </div>

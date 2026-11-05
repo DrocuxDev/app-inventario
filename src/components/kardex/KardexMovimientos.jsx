@@ -23,7 +23,7 @@ const KardexMovimientos = () => {
   const [form, setForm] = useState(FORM_VACIO);
   const mostrarAlerta = useAutoDismiss(setMensaje, 5000);
 
-  const cargarDatos = useCallback(() => Promise.all([api.get("/api/movimientos"), api.get("/api/productos"), api.get("/api/usuarios")])
+  const cargarDatos = useCallback(() => Promise.all([api.get("/api/movimientos"), api.get("/api/productos"), api.get("/api/usuarios").catch(() => ({ data: [] }))])
     .then(([resMov, resProd, resUser]) => { setMovimientos(resMov.data); setProductos(resProd.data); setUsuarios(resUser.data); })
     .catch(() => mostrarAlerta("Error al cargar datos del Kardex", "danger"))
     .finally(() => setLoading(false)), [mostrarAlerta]);
