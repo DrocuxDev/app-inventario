@@ -1,20 +1,24 @@
 import { useAutoDismiss } from "../ui/helpers";
 import { useState, useEffect, useCallback } from "react";
-import { Pencil, Trash2, Truck, Save, X, Mail, Phone } from "lucide-react";
+import { Pencil, Trash2, Truck, Save, Plus, Mail, Phone } from "lucide-react";
 import api from "../../services/api";
-import { PageHeader, Alert, EmptyRow } from "../ui/ui";
+import { PageHeader, Alert, DataTable, Modal, ConfirmDialog } from "../ui/ui";
 
 const FORM_VACIO = { id: null, razon_social: "", contacto: "", telefono: "", email: "" };
 
 const CrudProveedores = () => {
   const [proveedores, setProveedores] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(FORM_VACIO);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [proveedorAEliminar, setProveedorAEliminar] = useState(null);
   const [mensaje, setMensaje] = useState({ texto: "", tipo: "" });
   const mostrarAlerta = useAutoDismiss(setMensaje);
 
   const obtenerProveedores = useCallback(() => api.get("/api/proveedores")
     .then((res) => { setProveedores(res.data); })
-    .catch(() => mostrarAlerta("Error al cargar proveedores", "danger")), [mostrarAlerta]);
+    .catch(() => mostrarAlerta("Error al cargar proveedores", "danger"))
+    .finally(() => setLoading(false)), [mostrarAlerta]);
 
   useEffect(() => {
     obtenerProveedores();
@@ -22,6 +26,16 @@ const CrudProveedores = () => {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const limpiar = () => setForm(FORM_VACIO);
+
+  const abrirNuevo = () => {
+    limpiar();
+    setModalAbierto(true);
+  };
+
+  const cerrarModal = () => {
+    setModalAbierto(false);
+    limpiar();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,14 +47,14 @@ const CrudProveedores = () => {
         await api.post("/api/proveedores", form);
         mostrarAlerta("Proveedor registrado correctamente");
       }
-      limpiar();
+      cerrarModal();
       obtenerProveedores();
     } catch (error) {
       mostrarAlerta(error.response?.data?.error || "Error al guardar proveedor", "danger");
     }
   };
 
-  const handleEdit = (p) =>
+  const handleEdit = (p) => {
     setForm({
       id: p.id,
       razon_social: p.razon_social,
@@ -48,125 +62,251 @@ const CrudProveedores = () => {
       telefono: p.telefono ?? "",
       email: p.email ?? "",
     });
+    setModalAbierto(true);
+  };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Seguro que deseas eliminar este proveedor?")) return;
     try {
       await api.delete(`/api/proveedores/${id}`);
       mostrarAlerta("Proveedor eliminado", "warning");
+      if (form.id === id) cerrarModal();
       obtenerProveedores();
     } catch {
       mostrarAlerta("Error al eliminar proveedor", "danger");
+    } finally {
+      setProveedorAEliminar(null);
     }
   };
 
+  const isDirty = Boolean(
+    !form.id &&
+      (form.razon_social.trim() !== "" ||
+        form.contacto.trim() !== "" ||
+        form.telefono.trim() !== "" ||
+        form.email.trim() !== "")
+  );
+
+  const columns = [
+    {
+      key: "id",
+      header: "ID",
+      sortable: true,
+      sticky: true,
+      cellClassName: "mono cell-muted",
+      render: (p) => `#${String(p.id).padStart(3, "0")}`,
+    },
+    {
+      key: "razon_social",
+      header: "Razón social",
+      sortable: true,
+      truncate: 260,
+      cellClassName: "cell-primary",
+    },
+    {
+      key: "contacto",
+      header: "Contacto",
+      sortable: true,
+      truncate: 200,
+      render: (p) => p.contacto || "—",
+    },
+    {
+      key: "telefono",
+      header: "Teléfono",
+      nowrap: true,
+      cellClassName: "tabular cell-muted",
+      render: (p) =>
+        p.telefono ? (
+          <span className="d-inline-flex align-items-center gap-1">
+            <Phone size={14} strokeWidth={1.75} />
+            {p.telefono}
+          </span>
+        ) : (
+          "—"
+        ),
+    },
+    {
+      key: "email",
+      header: "Email",
+      cellClassName: "cell-muted",
+      render: (p) =>
+        p.email ? (
+          <span className="d-inline-flex align-items-center gap-1" title={p.email}>
+            <Mail size={14} strokeWidth={1.75} />
+            <span className="cell-truncate" style={{ "--truncate-w": "240px" }}>
+              {p.email}
+            </span>
+          </span>
+        ) : (
+          "—"
+        ),
+    },
+    {
+      key: "acciones",
+      header: "Acciones",
+      align: "right",
+      nowrap: true,
+      render: (p) => (
+        <div className="row-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            title="Editar"
+            aria-label={`Editar proveedor ${p.razon_social}`}
+            onClick={() => handleEdit(p)}
+          >
+            <Pencil size={16} strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn danger"
+            title="Eliminar"
+            aria-label={`Eliminar proveedor ${p.razon_social}`}
+            onClick={() => setProveedorAEliminar(p)}
+          >
+            <Trash2 size={16} strokeWidth={1.75} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div>
-      <PageHeader title="Proveedores" subtitle="Directorio de empresas y contactos de abastecimiento" />
+      <PageHeader
+        title="Proveedores"
+        subtitle="Directorio de empresas y contactos de abastecimiento"
+        actions={
+          <button type="button" className="btn-ui btn-primary-ui" onClick={abrirNuevo}>
+            <Plus size={16} strokeWidth={1.75} />
+            Nuevo proveedor
+          </button>
+        }
+      />
       <Alert mensaje={mensaje} onClose={() => setMensaje({ texto: "", tipo: "" })} />
 
-      <div className="row g-4">
-        <div className="col-lg-4">
-          <div className="ui-card">
-            <div className="ui-card-header">
-              <h2 className="ui-card-title">{form.id ? "Editar proveedor" : "Nuevo proveedor"}</h2>
-              {form.id && <span className="badge-ui badge-slate mono">ID {form.id}</span>}
-            </div>
-            <div className="ui-card-body">
-              <form onSubmit={handleSubmit}>
-                <div className="field">
-                  <label className="field-label">Razón social</label>
-                  <input type="text" name="razon_social" className="input-ui" placeholder="Ej. Importaciones SAC" value={form.razon_social} onChange={handleChange} required aria-label="Razón social" />
-                </div>
-                <div className="field">
-                  <label className="field-label">Persona de contacto</label>
-                  <input type="text" name="contacto" className="input-ui" placeholder="Ej. Juan Pérez" value={form.contacto} onChange={handleChange} aria-label="Contacto" />
-                </div>
-                <div className="field">
-                  <label className="field-label">Teléfono</label>
-                  <input type="text" name="telefono" className="input-ui tabular" placeholder="987 654 321" value={form.telefono} onChange={handleChange} aria-label="Teléfono" />
-                </div>
-                <div className="field">
-                  <label className="field-label">Correo electrónico</label>
-                  <input type="email" name="email" className="input-ui" placeholder="ventas@empresa.com" value={form.email} onChange={handleChange} aria-label="Correo electrónico" />
-                </div>
-                <div className="d-flex gap-2">
-                  <button type="submit" className="btn-ui btn-primary-ui btn-block">
-                    <Save size={16} strokeWidth={1.75} />
-                    {form.id ? "Actualizar" : "Guardar"}
-                  </button>
-                  {form.id && (
-                    <button type="button" className="btn-ui btn-secondary-ui" onClick={limpiar}>
-                      <X size={16} strokeWidth={1.75} />
-                      Cancelar
-                    </button>
-                  )}
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+      <DataTable
+        title="Directorio de proveedores"
+        countLabel="registros"
+        searchPlaceholder="Filtrar por razón social, contacto o correo…"
+        columns={columns}
+        data={proveedores}
+        loading={loading}
+        activeRowId={modalAbierto ? form.id : null}
+        emptyState={{
+          icon: Truck,
+          title: "Sin proveedores registrados",
+          subtitle: "Haz clic en «Nuevo proveedor» para agregar una empresa abastecedora.",
+        }}
+      />
 
-        <div className="col-lg-8">
-          <div className="ui-card">
-            <div className="ui-card-header">
-              <h2 className="ui-card-title">Directorio de proveedores</h2>
-              <span className="badge-ui badge-slate tabular">{proveedores.length} registros</span>
+      <Modal
+        open={modalAbierto}
+        onClose={cerrarModal}
+        title={form.id ? "Editar proveedor" : "Nuevo proveedor"}
+        size="md"
+        isDirty={isDirty}
+        badge={
+          form.id ? (
+            <span className="badge-ui badge-indigo mono">ID #{String(form.id).padStart(3, "0")}</span>
+          ) : null
+        }
+        footer={
+          <>
+            <button type="button" className="btn-ui btn-secondary-ui" onClick={cerrarModal}>
+              Cancelar
+            </button>
+            <button type="submit" form="proveedor-modal-form" className="btn-ui btn-primary-ui">
+              <Save size={16} strokeWidth={1.75} />
+              {form.id ? "Actualizar proveedor" : "Guardar proveedor"}
+            </button>
+          </>
+        }
+      >
+        <form id="proveedor-modal-form" onSubmit={handleSubmit}>
+          <div className="field">
+            <label className="field-label" htmlFor="prov-razon">
+              Razón social
+            </label>
+            <input
+              id="prov-razon"
+              type="text"
+              name="razon_social"
+              className="input-ui"
+              placeholder="Ej. Importaciones SAC"
+              value={form.razon_social}
+              onChange={handleChange}
+              required
+              aria-label="Razón social"
+            />
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor="prov-contacto">
+              Persona de contacto
+            </label>
+            <input
+              id="prov-contacto"
+              type="text"
+              name="contacto"
+              className="input-ui"
+              placeholder="Ej. Juan Pérez"
+              value={form.contacto}
+              onChange={handleChange}
+              aria-label="Contacto"
+            />
+          </div>
+          <div className="row g-3">
+            <div className="col-sm-6">
+              <div className="field mb-0">
+                <label className="field-label" htmlFor="prov-telefono">
+                  Teléfono
+                </label>
+                <input
+                  id="prov-telefono"
+                  type="text"
+                  name="telefono"
+                  className="input-ui tabular"
+                  placeholder="987 654 321"
+                  value={form.telefono}
+                  onChange={handleChange}
+                  aria-label="Teléfono"
+                />
+              </div>
             </div>
-            <div className="table-wrap">
-              <table className="table-ui">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Razón social</th>
-                    <th>Contacto</th>
-                    <th>Teléfono</th>
-                    <th>Email</th>
-                    <th className="text-end">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {proveedores.length === 0 ? (
-                    <EmptyRow colSpan={6} icon={Truck} title="Sin proveedores registrados" subtitle="Agrega las empresas que abastecen tu almacén." />
-                  ) : (
-                    proveedores.map((p) => (
-                      <tr key={p.id}>
-                        <td className="mono cell-muted">#{String(p.id).padStart(3, "0")}</td>
-                        <td className="cell-primary">{p.razon_social}</td>
-                        <td>{p.contacto || "—"}</td>
-                        <td className="tabular cell-muted">
-                          {p.telefono ? (
-                            <span className="d-inline-flex align-items-center gap-1">
-                              <Phone size={14} strokeWidth={1.75} />
-                              {p.telefono}
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td className="cell-muted">
-                          {p.email ? (
-                            <span className="d-inline-flex align-items-center gap-1">
-                              <Mail size={14} strokeWidth={1.75} />
-                              {p.email}
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td className="text-end" style={{ whiteSpace: "nowrap" }}>
-                          <button className="icon-btn" title="Editar" onClick={() => handleEdit(p)}>
-                            <Pencil size={16} strokeWidth={1.75} />
-                          </button>
-                          <button className="icon-btn danger" title="Eliminar" onClick={() => handleDelete(p.id)}>
-                            <Trash2 size={16} strokeWidth={1.75} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="col-sm-6">
+              <div className="field mb-0">
+                <label className="field-label" htmlFor="prov-email">
+                  Correo electrónico
+                </label>
+                <input
+                  id="prov-email"
+                  type="email"
+                  name="email"
+                  className="input-ui"
+                  placeholder="ventas@empresa.com"
+                  value={form.email}
+                  onChange={handleChange}
+                  aria-label="Correo electrónico"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={Boolean(proveedorAEliminar)}
+        onClose={() => setProveedorAEliminar(null)}
+        onConfirm={() => proveedorAEliminar && handleDelete(proveedorAEliminar.id)}
+        title="Eliminar proveedor"
+        confirmLabel="Eliminar proveedor"
+        description={
+          <>
+            ¿Seguro que deseas eliminar al proveedor{" "}
+            <strong className="cell-primary">«{proveedorAEliminar?.razon_social}»</strong>? Si tiene
+            productos asociados, el sistema impedirá su eliminación.
+          </>
+        }
+      />
     </div>
   );
 };
